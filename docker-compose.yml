@@ -1,0 +1,52 @@
+services:
+  redis:
+    image: redis:latest
+    container_name: redis-server
+    ports:
+      - "6379:6379"
+    networks:
+      - mynetwork
+
+  zookeeper:
+    image: confluentinc/cp-zookeeper:latest
+    container_name: zookeeper
+    ports:
+      - "2181:2181"
+    networks:
+      - mynetwork
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+
+  kafka:
+    image: confluentinc/cp-kafka:latest
+    container_name: kafka-server
+    ports:
+      - "9092:9092"
+    networks:
+      - mynetwork
+    depends_on:
+      - zookeeper
+    environment:
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka-server:9092
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092
+
+  go-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: go-app
+    ports:
+      - "8080:8080"
+    environment:
+      - REDIS_URL=redis-server:6379
+      - KAFKA_BROKER=kafka-server:9092
+    networks:
+      - mynetwork
+    depends_on:
+      - redis
+      - kafka
+
+networks:
+  mynetwork:
+    driver: bridge
